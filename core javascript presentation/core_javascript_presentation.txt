@@ -1177,6 +1177,9 @@ teacher1.bio();
 teacher1.subject;
 teacher1.greeting();
 
+
+Object.getPrototypeOf
+a2.constructor.prototype
 https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Inheritance
 
 person2.__proto__.__proto__.__proto__
