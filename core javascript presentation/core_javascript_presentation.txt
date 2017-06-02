@@ -637,8 +637,369 @@ foo.apply( null, [2, 3] ); // a:2, b:3
 var bar = foo.bind( null, 2 );
 bar( 3 ); // a:2, b:3
 
+-----------------------------------------------------------
+
+objects part 2
+
+[[Prototype]]
+
+Objects in JavaScript have an internal property, denoted in the specification as [[Prototype]], which is simply a reference to another object. Almost all objects are given a non-null value for this property, at the time of their creation.
+
+Consider:
+
+var myObject = {
+  a: 2
+};
+
+myObject.a; // 2
+
+ the [[Get]] operation that is invoked when you reference a property on an object, such as myObject.a. For that default [[Get]] operation, the first step is to check if the object itself has a property a on it, and if so, it's used.
+
+ But it's what happens if a isn't present on myObject that brings our attention now to the [[Prototype]] link of the object.
+
+The default [[Get]] operation proceeds to follow the [[Prototype]] link of the object if it cannot find the requested property on the object directly.
+
+var anotherObject = {
+  a: 2
+};
+
+// create an object linked to `anotherObject`
+var myObject = Object.create( anotherObject );
+
+myObject.a; // 2
+
+So, we have myObject that is now [[Prototype]] linked to anotherObject. Clearly myObject.a doesn't actually exist, but nevertheless, the property access succeeds (being found on anotherObject instead) and indeed finds the value 2.
+
+But, if a weren't found on anotherObject either, its [[Prototype]] chain, if non-empty, is again consulted and followed.
+
+This process continues until either a matching property name is found, or the [[Prototype]] chain ends. If no matching property is ever found by the end of the chain, the return result from the [[Get]] operation is undefined
+
+So, the [[Prototype]] chain is consulted, one link at a time, when you perform property look-ups in various fashions. The look-up stops once the property is found or the chain ends.
+
+Object.prototype
+
+The top-end of every normal [[Prototype]] chain is the built-in Object.prototype. This object includes a variety of common utilities used all over JS, because all normal (built-in, not host-specific extension) objects in JavaScript "descend from" (aka, have at the top of their [[Prototype]] chain) the Object.prototype object.
+Some utilities found here you may be familiar with include .toString() and .valueOf().
+
+myObject.foo = "bar";
+
+If foo is not already present directly on myObject, the [[Prototype]] chain is traversed, just like for the [[Get]] operation. If foo is not found anywhere in the chain, the property foo is added directly to myObject with the specified value, as expected.
+
+However, if foo is already present somewhere higher in the chain, nuanced (and perhaps surprising) behavior can occur with the myObject.foo = "bar" assignment.
+
+If the property name foo ends up both on myObject itself and at a higher level of the [[Prototype]] chain that starts at myObject, this is called shadowing. The foo property directly on myObject shadows any foo property which appears higher in the chain, because the myObject.foo look-up would always find the foo property that's lowest in the chain.
+
+"Class"
+
+in JavaScript, there are no abstract patterns/blueprints for objects called "classes" as there are in class-oriented languages. JavaScript just has objects.
+
+In fact, JavaScript is almost unique among languages as perhaps the only language with the right to use the label "object oriented", because it's one of a very short list of languages where an object can be created directly, without a class at all.
+
+In JavaScript, classes can't (being that they don't exist!) describe what an object can do. The object defines its own behavior directly. There's just the object.
+
+"Class" Functions
+
+The peculiar "sort-of class" behavior hinges on a strange characteristic of functions: all functions by default get a public property on them called prototype, which points at an otherwise arbitrary object.
+
+function Foo() {
+  // ...
+}
+
+Foo.prototype; 
+
+This object is often called "Foo's prototype", because we access it via an unfortunately-named Foo.prototype property reference.
+
+Whatever we call it, what exactly is this object?
+
+The most direct way to explain it is that each object created from calling new Foo() (see Chapter 2) will end up (somewhat arbitrarily) [[Prototype]]-linked to this "Foo dot prototype" object.
+
+Let's illustrate:
+
+function Foo() {
+  // ...
+}
+
+var a = new Foo();
+
+Object.getPrototypeOf( a ) === Foo.prototype; // true
+When a is created by calling new Foo(), one of the things (see Chapter 2 for all four steps) that happens is that a gets an internal [[Prototype]] link to the object that Foo.prototype is pointing at.
+
+In class-oriented languages, multiple copies (aka, "instances") of a class can be made, like stamping something out from a mold. As we saw in Chapter 4, this happens because the process of instantiating (or inheriting from) a class means, "copy the behavior plan from that class into a physical object", and this is done again for each new instance.
+
+But in JavaScript, there are no such copy-actions performed. You don't create multiple instances of a class. You can create multiple objects that [[Prototype]] link to a common object. But by default, no copying occurs, and thus these objects don't end up totally separate and disconnected from each other, but rather, quite linked.
+
+new Foo() results in a new object (we called it a), and that new object a is internally [[Prototype]] linked to the Foo.prototype object.
+
+We end up with two objects, linked to each other. That's it.
+
+"Constructors"
+
+Let's go back to some earlier code:
+
+function Foo() {
+  // ...
+}
+
+var a = new Foo();
+
+The Foo.prototype object by default (at declaration time on line 1 of the snippet!) gets a public, non-enumerable (see Chapter 3) property called .constructor, and this property is a reference back to the function (Foo in this case) that the object is associated with. Moreover, we see that object a created by the "constructor" call new Foo() seems to also have a property on it called .constructor which similarly points to "the function which created it".
+
+Constructor Or Call?
+
+In the above snippet, it's tempting to think that Foo is a "constructor", because we call it with new and we observe that it "constructs" an object.
+
+In reality, Foo is no more a "constructor" than any other function in your program. Functions themselves are not constructors. However, when you put the new keyword in front of a normal function call, that makes that function call a "constructor call". In fact, new sort of hijacks any normal function and calls it in a fashion that constructs an object, in addition to whatever else it was going to do.
+
+For example:
+
+function NothingSpecial() {
+  console.log( "Don't mind me!" );
+}
+
+var a = new NothingSpecial();
+// "Don't mind me!"
+
+a; // {}
+
+NothingSpecial is just a plain old normal function, but when called with new, it constructs an object, almost as a side-effect, which we happen to assign to a. The call was a constructor call, but NothingSpecial is not, in and of itself, a constructor.
+
+In other words, in JavaScript, it's most appropriate to say that a "constructor" is any function called with the new keyword in front of it.
+
+Functions aren't constructors, but function calls are "constructor calls" if and only if new is used.
+
+function Foo(name) {
+  this.name = name;
+}
+
+Foo.prototype.myName = function() {
+  return this.name;
+};
+
+var a = new Foo( "a" );
+var b = new Foo( "b" );
+
+a.myName(); // "a"
+b.myName(); // "b"
+
+In the above snippet, it's strongly tempting to think that when a and b are created, the properties/functions on the Foo.prototype object are copied over to each of a and b objects. However, that's not what happens.
+
+At the beginning of this chapter, we explained the [[Prototype]] link, and how it provides the fall-back look-up steps if a property reference isn't found directly on an object, as part of the default [[Get]] algorithm.
+
+So, by virtue of how they are created, a and b each end up with an internal [[Prototype]] linkage to Foo.prototype. When myName is not found on a or b, respectively, it's instead found (through delegation, see Chapter 6) on Foo.prototype.
+
+"Constructor" Redux
+
+Recall the discussion from earlier about the .constructor property, and how it seems like a.constructor === Foo being true means that a has an actual .constructor property on it, pointing at Foo? Not correct.
+
+This is just unfortunate confusion. In actuality, the .constructor reference is also delegated up to Foo.prototype, which happens to, by default, have a .constructor that points at Foo.
+
+ the .constructor property on Foo.prototype is only there by default on the object created when Foo the function is declared. If you create a new object, and replace a function's default .prototype object reference, the new object will not by default magically get a .constructor on it.
+
+ Consider:
+
+function Foo() { /* .. */ }
+
+Foo.prototype = { /* .. */ }; // create a new prototype object
+
+var a1 = new Foo();
+a1.constructor === Foo; // false!
+a1.constructor === Object; // true!
+
+a1 has no .constructor property, so it delegates up the [[Prototype]] chain to Foo.prototype. But that object doesn't have a .constructor either (like the default Foo.prototype object would have had!), so it keeps delegating, this time up to Object.prototype, the top of the delegation chain. That object indeed has a .constructor on it, which points to the built-in Object(..) function.
+
+"(Prototypal) Inheritance"
+
+function Foo(name) {
+  this.name = name;
+}
+
+Foo.prototype.myName = function() {
+  return this.name;
+};
+
+function Bar(name,label) {
+  Foo.call( this, name );
+  this.label = label;
+}
+
+// here, we make a new `Bar.prototype`
+// linked to `Foo.prototype`
+Bar.prototype = Object.create( Foo.prototype );
+
+// Beware! Now `Bar.prototype.constructor` is gone,
+// and might need to be manually "fixed" if you're
+// in the habit of relying on such properties!
+
+Bar.prototype.myLabel = function() {
+  return this.label;
+};
+
+var a = new Bar( "a", "obj a" );
+
+a.myName(); // "a"
+a.myLabel(); // "obj a"
+
+The important part is Bar.prototype = Object.create( Foo.prototype ). Object.create(..) creates a "new" object out of thin air, and links that new object's internal [[Prototype]] to the object you specify (Foo.prototype in this case).
+
+In other words, that line says: "make a new 'Bar dot prototype' object that's linked to 'Foo dot prototype'."
+
+Note: A common mis-conception/confusion here is that either of the following approaches would also work, but they do not work as you'd expect:
+
+// doesn't work like you want!
+Bar.prototype = Foo.prototype;
+
+// works kinda like you want, but with
+// side-effects you probably don't want :(
+Bar.prototype = new Foo();
+Bar.prototype = Foo.prototype doesn't create a new object for Bar.prototype to be linked to. It just makes Bar.prototype be another reference to Foo.prototype, which effectively links Bar directly to the same object as Foo links to: Foo.prototype. This means when you start assigning, like Bar.prototype.myLabel = ..., you're modifying not a separate object but the shared Foo.prototype object itself, which would affect any objects linked to Foo.prototype. This is almost certainly not what you want. If it is what you want, then you likely don't need Bar at all, and should just use only Foo and make your code simpler.
+
+Bar.prototype = new Foo() does in fact create a new object which is duly linked to Foo.prototype as we'd want. But, it uses the Foo(..) "constructor call" to do it. If that function has any side-effects (such as logging, changing state, registering against other objects, adding data properties to this, etc.), those side-effects happen at the time of this linking (and likely against the wrong object!), rather than only when the eventual Bar() "descendants" are created, as would likely be expected.
+
+So, we're left with using Object.create(..) to make a new object that's properly linked, but without having the side-effects of calling Foo(..). The slight downside is that we have to create a new object, throwing the old one away, instead of modifying the existing default object we're provided.
+
+Inspecting "Class" Relationships
+
+What if you have an object like a and want to find out what object (if any) it delegates to? Inspecting an instance (just an object in JS) for its inheritance ancestry (delegation linkage in JS) is often called introspection (or reflection) in traditional class-oriented environments.
+
+Consider:
+
+function Foo() {
+  // ...
+}
+
+Foo.prototype.blah = ...;
+
+var a = new Foo();
+How do we then introspect a to find out its "ancestry" (delegation linkage)? The first approach embraces the "class" confusion:
+
+a instanceof Foo; // true
+The instanceof operator takes a plain object as its left-hand operand and a function as its right-hand operand. The question instanceof answers is: in the entire [[Prototype]] chain of a, does the object arbitrarily pointed to by Foo.prototype ever appear?
+
+Unfortunately, this means that you can only inquire about the "ancestry" of some object (a) if you have some function (Foo, with its attached .prototype reference) to test with. If you have two arbitrary objects, say a and b, and want to find out if the objects are related to each other through a [[Prototype]] chain, instanceof alone can't help.
+
+// helper utility to see if `o1` is
+// related to (delegates to) `o2`
+function isRelatedTo(o1, o2) {
+  function F(){}
+  F.prototype = o2;
+  return o1 instanceof F;
+}
+
+var a = {};
+var b = Object.create( a );
+
+isRelatedTo( b, a ); // true
+Inside isRelatedTo(..), we borrow a throw-away function F, reassign its .prototype to arbitrarily point to some object o2, then ask if o1 is an "instance of" F. Obviously o1 isn't actually inherited or descended or even constructed from F, so it should be clear why this kind of exercise is silly and confusing. The problem comes down to the awkwardness of class semantics forced upon JavaScript, in this case as revealed by the indirect semantics of instanceof.
+
+The second, and much cleaner, approach to [[Prototype]] reflection is:
+
+Foo.prototype.isPrototypeOf( a ); // true
+
+We just need two objects to inspect a relationship between them. For example:
+
+// Simply: does `b` appear anywhere in
+// `c`s [[Prototype]] chain?
+b.isPrototypeOf( c );
+Notice, this approach doesn't require a function ("class") at all. It just uses object references directly to b and c, and inquires about their relationship. In other words, our isRelatedTo(..) utility above is built-in to the language, and it's called isPrototypeOf(..).
+
+We can also directly retrieve the [[Prototype]] of an object. As of ES5, the standard way to do this is:
+
+Object.getPrototypeOf( a );
+And you'll notice that object reference is what we'd expect:
+
+Object.getPrototypeOf( a ) === Foo.prototype; // true
+
+Most browsers (not all!) have also long supported a non-standard alternate way of accessing the internal [[Prototype]]:
+
+a.__proto__ === Foo.prototype; // true
+
+The strange .__proto__ (not standardized until ES6!) property "magically" retrieves the internal [[Prototype]] of an object as a reference, which is quite helpful if you want to directly inspect (or even traverse: .__proto__.__proto__...) the chain.
+
+Just as we saw earlier with .constructor, .__proto__ doesn't actually exist on the object you're inspecting (a in our running example). In fact, it exists (non-enumerable; see Chapter 2) on the built-in Object.prototype, along with the other common utilities (.toString(), .isPrototypeOf(..), etc).
+
+Object Links
+
+As we've now seen, the [[Prototype]] mechanism is an internal link that exists on one object which references some other object.
+
+This linkage is (primarily) exercised when a property/method reference is made against the first object, and no such property/method exists. In that case, the [[Prototype]] linkage tells the engine to look for the property/method on the linked-to object. In turn, if that object cannot fulfill the look-up, its [[Prototype]] is followed, and so on. This series of links between objects forms what is called the "prototype chain".
+
+var foo = {
+  something: function() {
+    console.log( "Tell me something good..." );
+  }
+};
+
+var bar = Object.create( foo );
+  
+bar.something(); // Tell me something good...
+
+Object.create(..) creates a new object (bar) linked to the object we specified (foo), which gives us all the power (delegation) of the [[Prototype]] mechanism, but without any of the unnecessary complication of new functions acting as classes and constructor calls, confusing .prototype and .constructor references, or any of that extra stuff.
+
+Note: Object.create(null) creates an object that has an empty (aka, null) [[Prototype]] linkage, and thus the object can't delegate anywhere. Since such an object has no prototype chain, the instanceof operator (explained earlier) has nothing to check, so it will always return false. These special empty-[[Prototype]] objects are often called "dictionaries" as they are typically used purely for storing data in properties, mostly because they have no possible surprise effects from any delegated properties/functions on the [[Prototype]] chain, and are thus purely flat data storage.
+
+We don't need classes to create meaningful relationships between two objects. The only thing we should really care about is objects linked together for delegation, and Object.create(..) gives us that linkage without all the class cruft.
 
 ------------------------------------------------------------
+
+example of prototypal inheritance and an explaination of it
+
+function Person(first, last, age, gender, interests) {
+        this.name = {
+          first,
+          last
+        };
+        this.age = age;
+        this.gender = gender;
+        this.interests = interests;
+      };
+      Person.prototype.bio = function() {
+        // First define a string, and make it equal to the part of
+        // the bio that we know will always be the same.
+        var string = this.name.first + ' ' + this.name.last + ' is ' + this.age + ' years old. ';
+        // define a variable that will contain the pronoun part of
+        // the sencond sentence
+        var pronoun;
+        // check what the value of gender is, and set pronoun
+        // to an appropriate value in each case
+        if(this.gender === 'male' || this.gender === 'Male' || this.gender === 'm' || this.gender === 'M') {
+          pronoun = 'He likes ';
+        } else if(this.gender === 'female' || this.gender === 'Female' || this.gender === 'f' || this.gender === 'F') {
+          pronoun = 'She likes ';
+        } else {
+          pronoun = 'They like ';
+        }
+        // add the pronoun string on to the end of the main string
+        string += pronoun;
+        // use another conditional to structure the last part of the
+        // second sentence depending on whether the number of interests
+        // is 1, 2, or 3
+        if(this.interests.length === 1) {
+          string += this.interests[0] + '.';
+        } else if(this.interests.length === 2) {
+          string += this.interests[0] + ' and ' + this.interests[1] + '.';
+        } else {
+          // if there are more than 2 interests, we loop through them
+          // all, adding each one to the main string followed by a comma,
+          // except for the last one, which needs an and & a full stop
+          for(var i = 0; i < this.interests.length; i++) {
+            if(i === this.interests.length - 1) {
+              string += 'and ' + this.interests[i] + '.';
+            } else {
+              string += this.interests[i] + ', ';
+            }
+          }
+        }
+        // finally, with the string built, we alert() it
+        alert(string);
+      };
+      Person.prototype.greeting = function() {
+        alert('Hi! I\'m ' + this.name.first + '.');
+      };
+      Person.prototype.farewell = function() {
+        alert(this.name.first + ' has left the building. Bye for now!');
+      }
+      var person1 = new Person('Tammi', 'Smith', 17, 'female', ['music', 'skiing', 'kickboxing']);
+
 The prototype property: Where inherited members are defined
 So, where are the inherited properties and methods defined? If you look at the Object reference page, you'll see listed in the left hand side a large number of properties and methods — many more than the number of inherited members we saw available on the person1 object in the above screenshot. Some are inherited, and some aren't — why is this?
 
@@ -757,6 +1118,64 @@ function Teacher(first, last, age, gender, interests, subject) {
 
   this.subject = subject;
 }
+
+This looks similar to the Person constructor in many ways, but there is something strange here that we've not seen before — the call() function. This function basically allows you to call a function defined somewhere else, but in the current context.
+
+We want the Teacher() constructor to take the same parameters as the Person() constructor it is inheriting from, so we specify them all as parameters in the call() invocation.
+
+As a note, we could have simply done this:
+
+function Teacher(first, last, age, gender, interests, subject) {
+  this.name = {
+    first,
+    last
+  };
+  this.age = age;
+  this.gender = gender;
+  this.interests = interests;
+  this.subject = subject;
+}
+But this is just redefining the properties anew, not inheriting them from Person(), so it defeats the point of what we are trying to do. It also takes more lines of code.
+
+Setting Teacher()'s prototype and constructor reference
+All is good so far, but we have a problem. We have defined a new constructor, and it has a prototype property that by default just contains a reference to the constructor function itself (try entering Teacher.prototype.constructor into your JavaScript console at this point). We need to get Teacher() to inherit the methods defined on Person()'s prototype. So how do we do that?
+
+Add the following line below your previous addition:
+Teacher.prototype = Object.create(Person.prototype);
+We need to do one more thing before we move on — after adding the last line, the Teacher() prototype's constructor property is now equal to Person(), because we just set Teacher.prototype to be equal to an object that is a copy of Person.prototype! Try saving your code, loading the page in a browser, and entering Teacher.prototype.constructor into the console again to verify.
+This can become a problem, so we need to set this right — you can do so by going back to your source code and adding the following line at the bottom:
+Teacher.prototype.constructor = Teacher;
+
+Giving Teacher() a new greeting() function
+To finish off our code, we need to define a new greeting() function on the Teacher() constructor.
+
+The easiest way to do this is to define it on Teacher()'s prototype — add the following at the bottom of your code:
+
+Teacher.prototype.greeting = function() {
+  var prefix;
+
+  if (this.gender === 'male' || this.gender === 'Male' || this.gender === 'm' || this.gender === 'M') {
+    prefix = 'Mr.';
+  } else if (this.gender === 'female' || this.gender === 'Female' || this.gender === 'f' || this.gender === 'F') {
+    prefix = 'Mrs.';
+  } else {
+    prefix = 'Mx.';
+  }
+
+  alert('Hello. My name is ' + prefix + ' ' + this.name.last + ', and I teach ' + this.subject + '.');
+};
+
+Trying the example out
+Now you've entered all the code, try creating an object instance from Teacher() by putting the following at the bottom of your JavaScript (or something similar of your choosing):
+
+var teacher1 = new Teacher('Dave', 'Griffiths', 31, 'male', ['football', 'cookery'], 'mathematics');
+Now save and refresh, and try accessing the properties and methods of your new teacher1 object, for example:
+
+teacher1.name.first;
+teacher1.interests[0];
+teacher1.bio();
+teacher1.subject;
+teacher1.greeting();
 
 https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Inheritance
 
