@@ -1,6 +1,6 @@
 Dynamic typing
 
-JavaScript is a loosely typed or a dynamic language. That means you don't have to declare the type of a variable ahead of time.
+  JavaScript is a loosely typed or a dynamic language. That means you don't have to declare the type of a variable ahead of time.
 
 ---------------------------------------------
 
@@ -64,6 +64,8 @@ var person = {
     alert('Hi! I\'m ' + this.name[0] + '.');
   }
 };
+
+
 
 An object is a collection of related data and/or functionality
 
@@ -416,6 +418,7 @@ Invoking foo with explicit binding by foo.call(..) allows us to force its this t
 ----- boxing start -----
 If you pass a simple primitive value (of type string, boolean, or number) as the this binding, the primitive value is wrapped in its object-form (new String(..), new Boolean(..), or new Number(..), respectively). This is often referred to as "boxing".
 ----- boxing end -----
+
 Unfortunately, explicit binding alone still doesn't offer any solution to the issue mentioned previously, of a function "losing" its intended this binding, or just having it paved over by a framework, etc.
 
 Hard Binding
@@ -441,7 +444,6 @@ setTimeout( bar, 100 ); // 2
 // so that it cannot be overriden
 bar.call( window ); // 2
 Let's examine how this variation works. We create a function bar() which, internally, manually calls foo.call(obj), thereby forcibly invoking foo with obj binding for this. No matter how you later invoke the function bar, it will always manually invoke foo with obj. This binding is both explicit and strong, so we call it hard binding.
-
 
 The most typical way to wrap a function with a hard binding creates a pass-thru of any arguments passed and any return value received:
 
