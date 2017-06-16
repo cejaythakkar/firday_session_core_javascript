@@ -1185,3 +1185,29 @@ a2.constructor.prototype
 https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Objects/Inheritance
 
 person2.__proto__.__proto__.__proto__
+
+----- intro to design patterns -----
+
+what are design patterns
+
+Simply put, a design pattern is a reusable software solution to a specific type of problem that occurs frequently when developing software. Over the many years of practicing software development, experts have figured out ways of solving similar problems. These solutions have been encapsulated into design patterns. So:
+
+-----advantages-----
+patterns are proven solutions to software development problems
+patterns are scalable as they usually are structured and have rules that you should follow
+patterns are reusable for similar problems
+
+-----types-----
+Constructor Pattern
+Module Pattern
+Revealing Module Pattern
+Singleton Pattern
+Observer Pattern
+Mediator Pattern
+Prototype Pattern
+Command Pattern
+Facade Pattern
+Factory Pattern
+Mixin Pattern
+Decorator Pattern
+Flyweight Pattern
